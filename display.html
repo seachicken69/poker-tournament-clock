@@ -3,108 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poker Tournament Clock</title>
+<title>錦標賽儀錶板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Noto+Serif+TC:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dseg@0.46.0/css/dseg.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+:root{
+  --bg-0:#060b07;
+  --bg-1:#0a1810;
+  --felt:#0c2417;
+  --felt-line:#1d4430;
+  --gold:#d4af37;
+  --gold-hi:#f3df9f;
+  --gold-dim:#7d6326;
+  --cream:#f4ecd8;
+  --ink:#9fc2ac;
+  --amber:#e3a23d;
+  --red:#d4283f;
+  --red-glow:rgba(212,40,63,.55);
+  --amber-glow:rgba(227,162,61,.45);
+  --gold-glow:rgba(212,175,55,.35);
+  --serif:'Cinzel','Noto Serif TC',serif;
+  --mono:'IBM Plex Mono','Noto Sans TC',monospace;
+  --digit:'DSEG7 Classic',var(--mono);
+}
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
 body{
-  background:#0d1b2e;color:#fff;
-  font-family:'Arial Black','Arial',sans-serif;
+  background:var(--bg-0);color:var(--cream);
+  font-family:var(--mono);
   min-height:100vh;display:flex;flex-direction:column;
-  overflow:hidden;user-select:none;
+  overflow:hidden;user-select:none;position:relative;
 }
 
-/* ── Header ── */
-.header{
-  background:#112240;border-bottom:2px solid #1e3a6e;
-  text-align:center;padding:10px 20px;
-  font-size:clamp(18px,2.5vw,32px);font-weight:900;
-  text-transform:uppercase;letter-spacing:4px;color:#64b5f6;
+/* ── Atmosphere ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(212,175,55,.08), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 50% 110%, rgba(12,36,23,.9), transparent 60%),
+    repeating-linear-gradient(135deg, rgba(212,175,55,.018) 0 2px, transparent 2px 26px),
+    repeating-linear-gradient(45deg, rgba(212,175,55,.018) 0 2px, transparent 2px 26px),
+    radial-gradient(circle at 50% 50%, var(--bg-1) 0%, var(--bg-0) 78%);
 }
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  box-shadow:inset 0 0 22vw rgba(0,0,0,.85);
+}
+.suit{
+  position:fixed;z-index:0;pointer-events:none;
+  font-family:Georgia,serif;color:var(--gold);opacity:.045;
+  font-size:26vw;line-height:1;filter:blur(.5px);
+}
+.suit.tl{top:-9vw;left:-7vw;transform:rotate(-12deg)}
+.suit.br{bottom:-9vw;right:-7vw;transform:rotate(168deg)}
+
+/* ── Marquee header ── */
+.header{
+  position:relative;z-index:1;padding:16px 28px 14px;text-align:center;
+  border-bottom:1px solid var(--gold-dim);
+  background:linear-gradient(180deg, rgba(212,175,55,.07), transparent);
+}
+.header::before,.header::after{
+  content:'';position:absolute;left:0;right:0;height:1px;
+  background:linear-gradient(90deg, transparent, var(--gold) 50%, transparent);
+}
+.header::before{bottom:-3px}
+.header-row{display:flex;align-items:center;justify-content:center;gap:18px}
+.diamond{color:var(--gold);font-size:clamp(10px,1vw,14px);opacity:.8;flex-shrink:0}
+.t-name{
+  font-family:var(--serif);font-weight:900;
+  font-size:clamp(20px,2.6vw,34px);
+  letter-spacing:.18em;text-transform:uppercase;
+  background:linear-gradient(100deg, var(--gold-dim) 0%, var(--gold-hi) 30%, var(--gold) 50%, var(--gold-hi) 70%, var(--gold-dim) 100%);
+  background-size:240% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shimmer 7s linear infinite;
+}
+@keyframes shimmer{0%{background-position:0% 0}100%{background-position:240% 0}}
+.subtitle{margin-top:5px;font-size:clamp(9px,.8vw,11px);letter-spacing:.4em;color:var(--ink);text-transform:uppercase}
 
 /* ── Main 3-column grid ── */
 .main{
+  position:relative;z-index:1;
   flex:1;display:grid;
-  grid-template-columns:1fr 2fr 1fr;
-  gap:16px;padding:16px;
+  grid-template-columns:1fr 1.7fr 1fr;
+  gap:18px;padding:20px 26px;min-height:0;
 }
 
-/* ── Info boxes ── */
-.col-side{display:flex;flex-direction:column;gap:12px;justify-content:center}
-.info-box{
-  background:#112240;border:1px solid #1e3a6e;border-radius:10px;
-  padding:14px 16px;text-align:center;
+/* ── Plaques (info boxes) ── */
+.col-side{display:flex;flex-direction:column;gap:14px;justify-content:center}
+.plaque{
+  position:relative;
+  background:linear-gradient(160deg, var(--felt), #081711);
+  border:1px solid var(--felt-line);
+  border-radius:6px;padding:14px 16px;text-align:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 0 1px rgba(212,175,55,.05);
 }
-.info-label{font-size:clamp(10px,1vw,13px);color:#64b5f6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-.info-value{font-size:clamp(20px,2.5vw,34px);font-weight:900;color:#fff}
-.info-sub{font-size:13px;color:#7b9dc2;margin-top:4px}
+.plaque::before{
+  content:'';position:absolute;inset:4px;border:1px solid rgba(212,175,55,.16);
+  border-radius:3px;pointer-events:none;
+}
+.plaque-label{
+  font-size:clamp(9px,.78vw,11px);color:var(--gold);
+  text-transform:uppercase;letter-spacing:.22em;margin-bottom:7px;font-weight:600;
+}
+.plaque-value{
+  font-family:var(--digit);font-size:clamp(22px,2.6vw,36px);
+  color:var(--cream);letter-spacing:.02em;
+  text-shadow:0 0 18px rgba(244,236,216,.18);
+}
+.plaque-sub{font-size:12px;color:var(--ink);margin-top:4px;font-family:var(--mono)}
 
-/* ── Center column ── */
+/* ── Center stage ── */
 .col-center{
+  position:relative;
   display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:8px;
+  align-items:center;justify-content:center;gap:10px;
 }
-.level-label{
-  font-size:clamp(18px,2.2vw,28px);font-weight:900;
-  color:#64b5f6;text-transform:uppercase;letter-spacing:4px;
+.ribbon{
+  position:relative;
+  font-family:var(--serif);font-weight:700;
+  font-size:clamp(15px,1.6vw,22px);
+  color:var(--bg-0);background:linear-gradient(180deg,var(--gold-hi),var(--gold));
+  padding:7px 36px;letter-spacing:.32em;text-transform:uppercase;
+  clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);
+  box-shadow:0 4px 14px rgba(0,0,0,.5);
 }
+.stage{position:relative;display:flex;align-items:center;justify-content:center;margin:6px 0}
+.stage::before{
+  content:'';position:absolute;width:min(56vh,72vw);height:min(56vh,72vw);
+  border-radius:50%;
+  background:radial-gradient(circle, var(--gold-glow), transparent 68%);
+  filter:blur(6px);animation:breathe 4s ease-in-out infinite;
+  z-index:-1;
+}
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.05)}}
 .timer{
-  font-size:clamp(72px,12vw,150px);font-weight:900;
-  font-family:'Courier New',monospace;line-height:1;
-  color:#fff;text-shadow:0 0 40px rgba(100,181,246,.4);
-  transition:color .3s;
+  font-family:var(--digit);
+  font-size:clamp(80px,13vw,168px);font-weight:400;line-height:1;
+  color:var(--cream);text-shadow:0 0 50px rgba(244,236,216,.3), 0 0 100px rgba(212,175,55,.15);
+  transition:color .3s, text-shadow .3s;
+  letter-spacing:.01em;
 }
-.timer.warning{color:#ffb74d;text-shadow:0 0 40px rgba(255,183,77,.5)}
-.timer.danger{color:#ef5350;text-shadow:0 0 40px rgba(239,83,80,.6);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-.status-badge{
-  font-size:clamp(13px,1.4vw,18px);font-weight:700;
-  padding:6px 22px;border-radius:20px;text-transform:uppercase;letter-spacing:2px;margin:4px 0;
-}
-.s-idle    {background:#263238;color:#90a4ae}
-.s-running {background:#1b5e20;color:#69f0ae}
-.s-paused  {background:#bf360c;color:#fff}
-.s-break   {background:#1a237e;color:#82b1ff}
-.s-finished{background:#263238;color:#90a4ae}
-.rebuy-info{font-size:clamp(11px,1.1vw,14px);color:#7b9dc2;text-align:center}
-.next-preview{font-size:clamp(11px,1.1vw,14px);color:#546e8a;margin-top:4px}
+.timer.warning{color:var(--amber);text-shadow:0 0 50px var(--amber-glow), 0 0 100px rgba(227,162,61,.2)}
+.timer.danger{color:var(--red);text-shadow:0 0 50px var(--red-glow), 0 0 100px rgba(212,40,63,.25);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
-/* ── Blinds bar ── */
-.blinds-bar{
-  background:#112240;border-top:2px solid #1e3a6e;
-  display:grid;grid-template-columns:1fr 1fr 1fr;
+.status-badge{
+  position:relative;
+  font-size:clamp(11px,1.1vw,14px);font-weight:600;font-family:var(--mono);
+  padding:7px 26px;border-radius:30px;text-transform:uppercase;letter-spacing:.28em;
+  background:rgba(0,0,0,.3);
 }
-.blind-cell{padding:14px;text-align:center;border-right:1px solid #1e3a6e}
-.blind-cell:last-child{border-right:none}
-.blind-label{font-size:clamp(10px,1vw,13px);color:#64b5f6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-.blind-value{font-size:clamp(28px,4.5vw,56px);font-weight:900;color:#fff}
+.s-idle    {color:var(--ink);   box-shadow:inset 0 0 0 1px rgba(159,194,172,.35)}
+.s-running {color:#7de8a8;      box-shadow:inset 0 0 0 1px rgba(125,232,168,.5), 0 0 16px rgba(125,232,168,.15)}
+.s-paused  {color:var(--amber); box-shadow:inset 0 0 0 1px rgba(227,162,61,.55), 0 0 16px rgba(227,162,61,.15)}
+.s-break   {color:#8fb4ff;      box-shadow:inset 0 0 0 1px rgba(143,180,255,.5), 0 0 16px rgba(143,180,255,.15)}
+.s-finished{color:var(--ink);   box-shadow:inset 0 0 0 1px rgba(159,194,172,.35)}
+
+.rebuy-info{font-size:clamp(11px,1.05vw,13px);color:var(--ink);text-align:center;letter-spacing:.04em}
+.next-preview{font-size:clamp(10px,.95vw,12px);color:var(--gold-dim);margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── Blinds rail ── */
+.blinds-bar{
+  position:relative;z-index:1;
+  background:linear-gradient(180deg, rgba(212,175,55,.05), transparent);
+  border-top:1px solid var(--gold-dim);
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  padding:4px 0 2px;
+}
+.blind-cell{position:relative;padding:14px 10px 16px;text-align:center}
+.blind-cell + .blind-cell::before{
+  content:'♦';position:absolute;left:0;top:50%;transform:translate(-50%,-50%);
+  color:var(--gold);font-size:13px;opacity:.7;
+}
+.blind-label{
+  font-size:clamp(9px,.78vw,11px);color:var(--gold);text-transform:uppercase;
+  letter-spacing:.3em;margin-bottom:7px;font-weight:600;
+}
+.blind-value{
+  font-family:var(--digit);font-size:clamp(30px,4.6vw,58px);
+  color:var(--cream);text-shadow:0 0 22px rgba(244,236,216,.16);
+}
 </style>
 </head>
 <body>
 
-<div class="header" id="t-name">AK 錦標賽</div>
+<div class="suit tl">♠</div>
+<div class="suit br">♥</div>
+
+<div class="header">
+  <div class="header-row">
+    <span class="diamond">◆</span>
+    <div class="t-name" id="t-name">AK 錦標賽</div>
+    <span class="diamond">◆</span>
+  </div>
+  <div class="subtitle">Tournament Clock</div>
+</div>
 
 <div class="main">
   <!-- Left -->
   <div class="col-side">
-    <div class="info-box">
-      <div class="info-label">現在時間</div>
-      <div class="info-value" id="current-time">--:--</div>
+    <div class="plaque">
+      <div class="plaque-label">現在時間</div>
+      <div class="plaque-value" id="current-time">--:--</div>
     </div>
-    <div class="info-box">
-      <div class="info-label">已進行</div>
-      <div class="info-value" id="elapsed-time">00:00:00</div>
+    <div class="plaque">
+      <div class="plaque-label">已進行</div>
+      <div class="plaque-value" id="elapsed-time">00:00:00</div>
     </div>
-    <div class="info-box">
-      <div class="info-label">下次休息</div>
-      <div class="info-value" id="next-break">--</div>
+    <div class="plaque">
+      <div class="plaque-label">下次休息</div>
+      <div class="plaque-value" id="next-break">--</div>
     </div>
   </div>
 
   <!-- Center -->
   <div class="col-center">
-    <div class="level-label" id="level-label">LEVEL 1</div>
-    <div class="timer" id="timer">--:--</div>
+    <div class="ribbon" id="level-label">LEVEL 1</div>
+    <div class="stage">
+      <div class="timer" id="timer">--:--</div>
+    </div>
     <div class="status-badge s-idle" id="status-badge">等待開始</div>
     <div class="rebuy-info" id="rebuy-info"></div>
     <div class="next-preview" id="next-preview"></div>
@@ -112,18 +234,18 @@ body{
 
   <!-- Right -->
   <div class="col-side">
-    <div class="info-box">
-      <div class="info-label">剩餘人數</div>
-      <div class="info-value" id="players-rem">-</div>
-      <div class="info-sub" id="total-players"></div>
+    <div class="plaque">
+      <div class="plaque-label">剩餘人數</div>
+      <div class="plaque-value" id="players-rem">-</div>
+      <div class="plaque-sub" id="total-players"></div>
     </div>
-    <div class="info-box">
-      <div class="info-label">平均籌碼</div>
-      <div class="info-value" id="avg-chips">-</div>
+    <div class="plaque">
+      <div class="plaque-label">平均籌碼</div>
+      <div class="plaque-value" id="avg-chips">-</div>
     </div>
-    <div class="info-box">
-      <div class="info-label">獎池</div>
-      <div class="info-value" id="prize-pool">$0</div>
+    <div class="plaque">
+      <div class="plaque-label">獎池</div>
+      <div class="plaque-value" id="prize-pool">$0</div>
     </div>
   </div>
 </div>
@@ -222,7 +344,6 @@ function render() {
   document.getElementById('t-name').textContent = T.name;
   document.getElementById('players-rem').textContent = T.players_remaining || '-';
   document.getElementById('total-players').textContent = T.total_buy_ins ? `/ ${T.total_buy_ins}` : '';
-  console.log('prize debug', T.total_buy_ins, T.buy_in_amount, T.reserve_rate);
   const gross    = (T.total_buy_ins || 0) * (T.buy_in_amount || 0);
   const rate     = (T.reserve_rate  || 0) / 100;
   const netPrize = Math.floor(gross * (1 - rate));
