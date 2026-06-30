@@ -111,11 +111,11 @@ body::after{
   text-transform:uppercase;letter-spacing:.22em;margin-bottom:7px;font-weight:600;
 }
 .plaque-value{
-  font-family:var(--digit);font-size:clamp(22px,2.6vw,36px);
-  color:var(--cream);letter-spacing:.02em;
+  font-family:var(--digit);font-size:clamp(30px,3.6vw,48px);
+  color:var(--cream);letter-spacing:.02em;white-space:nowrap;
   text-shadow:0 0 18px rgba(244,236,216,.18);
 }
-.plaque-sub{font-size:12px;color:var(--ink);margin-top:4px;font-family:var(--mono)}
+.plaque-sub{font-size:12px;color:var(--ink);margin-top:4px;font-family:var(--mono);white-space:nowrap}
 
 /* ── Center stage ── */
 .col-center{
@@ -185,7 +185,7 @@ body::after{
   letter-spacing:.3em;margin-bottom:7px;font-weight:600;
 }
 .blind-value{
-  font-family:var(--digit);font-size:clamp(30px,4.6vw,58px);
+  font-family:var(--digit);font-size:clamp(38px,6vw,76px);
   color:var(--cream);text-shadow:0 0 22px rgba(244,236,216,.16);
 }
 </style>
@@ -337,6 +337,14 @@ function nextBreakSecs() {
 function fmt(s)    { s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}` }
 function fmtH(s)   { s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
 function num(n)    { return (n||0).toLocaleString() }
+function numK(n) {
+  n = n || 0;
+  if (n >= 1000) {
+    const k = n / 1000;
+    return (Number.isInteger(k) ? k : k.toFixed(1).replace(/\.0$/,'')) + 'K';
+  }
+  return String(n);
+}
 
 // ── Render ────────────────────────────────────────────
 function render() {
@@ -376,9 +384,9 @@ function render() {
       document.getElementById('ante').textContent = '-';
     } else {
       document.getElementById('level-label').textContent = `LEVEL ${cl.level_number || T.current_level}`;
-      document.getElementById('sb').textContent = num(cl.small_blind);
-      document.getElementById('bb').textContent = num(cl.big_blind);
-      document.getElementById('ante').textContent = num(cl.ante);
+      document.getElementById('sb').textContent = numK(cl.small_blind);
+      document.getElementById('bb').textContent = numK(cl.big_blind);
+      document.getElementById('ante').textContent = numK(cl.ante);
     }
     if (nl) {
       document.getElementById('next-preview').textContent = nl.is_break
