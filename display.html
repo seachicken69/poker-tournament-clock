@@ -290,6 +290,24 @@ function tick() {
   document.getElementById('next-break').textContent = nb !== null ? fmtH(nb) : '--';
 }
 
+// ── Wake Lock（防止螢幕自動關閉）────────────────────
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch(e) {}
+  }
+}
+// 頁面重新顯示時（從背景切回）重新取得鎖定
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+// 首次需使用者互動才能觸發（iOS 限制），點擊任何地方後啟動
+document.addEventListener('click', requestWakeLock, { once: true });
+document.addEventListener('touchstart', requestWakeLock, { once: true });
+
 // ── Init ─────────────────────────────────────────────
 load();
 subscribe();
