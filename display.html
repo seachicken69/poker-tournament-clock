@@ -155,7 +155,7 @@ let BL = [];    // blind_levels
 // ── Load ──────────────────────────────────────────────
 async function load() {
   const { data: t } = await sb.from('tournaments').select('*')
-    .order('id', { ascending: false }).limit(1).maybeSingle();
+    .eq('is_active', true).maybeSingle();
   if (!t) return;
   T = t;
   const { data: bl } = await sb.from('blind_levels').select('*')
@@ -221,15 +221,18 @@ function render() {
   if (!T) return;
   document.getElementById('t-name').textContent = T.name;
   document.getElementById('players-rem').textContent = T.players_remaining || '-';
-  document.getElementById('total-players').textContent = T.total_players ? `/ ${T.total_players}` : '';
-  document.getElementById('prize-pool').textContent = T.prize_pool ? `$${num(T.prize_pool)}` : '$0';
+  document.getElementById('total-players').textContent = T.total_buy_ins ? `/ ${T.total_buy_ins}` : '';
+  console.log('prize debug', T.total_buy_ins, T.buy_in_amount, T.reserve_rate);
+  const gross    = (T.total_buy_ins || 0) * (T.buy_in_amount || 0);
+  const rate     = (T.reserve_rate  || 0) / 100;
+  const netPrize = Math.floor(gross * (1 - rate));
+  document.getElementById('prize-pool').textContent = `$${num(netPrize)}`;
   document.getElementById('rebuy-info').textContent = T.rebuy_info || '';
 
   // Avg chips
   const avgEl = document.getElementById('avg-chips');
-  if (T.starting_chips && T.players_remaining) {
-    const totalChips = T.total_players * T.starting_chips;
-    avgEl.textContent = num(Math.floor(totalChips / T.players_remaining));
+  if (T.total_buy_ins && T.starting_chips && T.players_remaining) {
+    avgEl.textContent = num(Math.floor(T.total_buy_ins * T.starting_chips / T.players_remaining));
   } else {
     avgEl.textContent = '-';
   }
@@ -291,6 +294,7 @@ function tick() {
 load();
 subscribe();
 setInterval(tick, 1000);
+setInterval(load, 3000); // polling fallback if Realtime is not enabled
 </script>
 </body>
 </html>
