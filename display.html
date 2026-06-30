@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Tournament Clock</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#0d1b2e;color:#fff;
+  font-family:'Arial Black','Arial',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;
+  overflow:hidden;user-select:none;
+}
+
+/* ── Header ── */
+.header{
+  background:#112240;border-bottom:2px solid #1e3a6e;
+  text-align:center;padding:10px 20px;
+  font-size:clamp(18px,2.5vw,32px);font-weight:900;
+  text-transform:uppercase;letter-spacing:4px;color:#64b5f6;
+}
+
+/* ── Main 3-column grid ── */
+.main{
+  flex:1;display:grid;
+  grid-template-columns:1fr 2fr 1fr;
+  gap:16px;padding:16px;
+}
+
+/* ── Info boxes ── */
+.col-side{display:flex;flex-direction:column;gap:12px;justify-content:center}
+.info-box{
+  background:#112240;border:1px solid #1e3a6e;border-radius:10px;
+  padding:14px 16px;text-align:center;
+}
+.info-label{font-size:clamp(10px,1vw,13px);color:#64b5f6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.info-value{font-size:clamp(20px,2.5vw,34px);font-weight:900;color:#fff}
+.info-sub{font-size:13px;color:#7b9dc2;margin-top:4px}
+
+/* ── Center column ── */
+.col-center{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+}
+.level-label{
+  font-size:clamp(18px,2.2vw,28px);font-weight:900;
+  color:#64b5f6;text-transform:uppercase;letter-spacing:4px;
+}
+.timer{
+  font-size:clamp(72px,12vw,150px);font-weight:900;
+  font-family:'Courier New',monospace;line-height:1;
+  color:#fff;text-shadow:0 0 40px rgba(100,181,246,.4);
+  transition:color .3s;
+}
+.timer.warning{color:#ffb74d;text-shadow:0 0 40px rgba(255,183,77,.5)}
+.timer.danger{color:#ef5350;text-shadow:0 0 40px rgba(239,83,80,.6);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.status-badge{
+  font-size:clamp(13px,1.4vw,18px);font-weight:700;
+  padding:6px 22px;border-radius:20px;text-transform:uppercase;letter-spacing:2px;margin:4px 0;
+}
+.s-idle    {background:#263238;color:#90a4ae}
+.s-running {background:#1b5e20;color:#69f0ae}
+.s-paused  {background:#bf360c;color:#fff}
+.s-break   {background:#1a237e;color:#82b1ff}
+.s-finished{background:#263238;color:#90a4ae}
+.rebuy-info{font-size:clamp(11px,1.1vw,14px);color:#7b9dc2;text-align:center}
+.next-preview{font-size:clamp(11px,1.1vw,14px);color:#546e8a;margin-top:4px}
+
+/* ── Blinds bar ── */
+.blinds-bar{
+  background:#112240;border-top:2px solid #1e3a6e;
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+}
+.blind-cell{padding:14px;text-align:center;border-right:1px solid #1e3a6e}
+.blind-cell:last-child{border-right:none}
+.blind-label{font-size:clamp(10px,1vw,13px);color:#64b5f6;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.blind-value{font-size:clamp(28px,4.5vw,56px);font-weight:900;color:#fff}
+</style>
+</head>
+<body>
+
+<div class="header" id="t-name">AK 錦標賽</div>
+
+<div class="main">
+  <!-- Left -->
+  <div class="col-side">
+    <div class="info-box">
+      <div class="info-label">現在時間</div>
+      <div class="info-value" id="current-time">--:--</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">已進行</div>
+      <div class="info-value" id="elapsed-time">00:00:00</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">下次休息</div>
+      <div class="info-value" id="next-break">--</div>
+    </div>
+  </div>
+
+  <!-- Center -->
+  <div class="col-center">
+    <div class="level-label" id="level-label">LEVEL 1</div>
+    <div class="timer" id="timer">--:--</div>
+    <div class="status-badge s-idle" id="status-badge">等待開始</div>
+    <div class="rebuy-info" id="rebuy-info"></div>
+    <div class="next-preview" id="next-preview"></div>
+  </div>
+
+  <!-- Right -->
+  <div class="col-side">
+    <div class="info-box">
+      <div class="info-label">剩餘人數</div>
+      <div class="info-value" id="players-rem">-</div>
+      <div class="info-sub" id="total-players"></div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">平均籌碼</div>
+      <div class="info-value" id="avg-chips">-</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">獎池</div>
+      <div class="info-value" id="prize-pool">$0</div>
+    </div>
+  </div>
+</div>
+
+<div class="blinds-bar">
+  <div class="blind-cell">
+    <div class="blind-label">Small Blind 小盲</div>
+    <div class="blind-value" id="sb">-</div>
+  </div>
+  <div class="blind-cell">
+    <div class="blind-label">Big Blind 大盲</div>
+    <div class="blind-value" id="bb">-</div>
+  </div>
+  <div class="blind-cell">
+    <div class="blind-label">Ante 前注</div>
+    <div class="blind-value" id="ante">0</div>
+  </div>
+</div>
+
+<script>
+const SB_URL  = 'https://nezsuytdkonbvonzmdlj.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lenN1eXRka29uYnZvbnptZGxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMjY2MDYsImV4cCI6MjA5MTcwMjYwNn0.upQMNjJoS20cEi41aWDKJjTko7Y7aBfaMjHvdiMvZJA';
+const { createClient } = supabase;
+const sb = createClient(SB_URL, SB_ANON);
+
+let T = null;   // tournament
+let BL = [];    // blind_levels
+
+// ── Load ──────────────────────────────────────────────
+async function load() {
+  const { data: t } = await sb.from('tournaments').select('*')
+    .order('id', { ascending: false }).limit(1).maybeSingle();
+  if (!t) return;
+  T = t;
+  const { data: bl } = await sb.from('blind_levels').select('*')
+    .eq('tournament_id', t.id).order('level_order');
+  BL = bl || [];
+  render();
+}
+
+function subscribe() {
+  sb.channel('display-rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, load)
+    .subscribe();
+}
+
+// ── Helpers ───────────────────────────────────────────
+function curLevel()  { return BL.find(l => l.level_order === T.current_level) }
+function nextLevel() { return BL.find(l => l.level_order === T.current_level + 1) }
+
+function remainingSecs() {
+  if (!T || !curLevel()) return 0;
+  if (T.status === 'paused') return T.pause_remaining_secs || 0;
+  if (T.status === 'running' || T.status === 'break') {
+    const elapsed = (Date.now() - new Date(T.level_start_at).getTime()) / 1000;
+    return Math.max(0, curLevel().duration_minutes * 60 - elapsed);
+  }
+  return curLevel().duration_minutes * 60;
+}
+
+function elapsedTotalSecs() {
+  if (!T) return 0;
+  let done = 0;
+  for (const l of BL) {
+    if (l.level_order < T.current_level) done += l.duration_minutes * 60;
+  }
+  const cl = curLevel();
+  if (!cl) return done;
+  const levelTotal = cl.duration_minutes * 60;
+  if (T.status === 'running' || T.status === 'break') {
+    const cur = (Date.now() - new Date(T.level_start_at).getTime()) / 1000;
+    return done + Math.min(cur, levelTotal);
+  }
+  if (T.status === 'paused') return done + levelTotal - (T.pause_remaining_secs || 0);
+  return done;
+}
+
+function nextBreakSecs() {
+  const nb = BL.find(l => l.level_order > T.current_level && l.is_break);
+  if (!nb) return null;
+  let secs = remainingSecs();
+  for (const l of BL) {
+    if (l.level_order > T.current_level && l.level_order < nb.level_order)
+      secs += l.duration_minutes * 60;
+  }
+  return secs;
+}
+
+function fmt(s)    { s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}` }
+function fmtH(s)   { s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
+function num(n)    { return (n||0).toLocaleString() }
+
+// ── Render ────────────────────────────────────────────
+function render() {
+  if (!T) return;
+  document.getElementById('t-name').textContent = T.name;
+  document.getElementById('players-rem').textContent = T.players_remaining || '-';
+  document.getElementById('total-players').textContent = T.total_players ? `/ ${T.total_players}` : '';
+  document.getElementById('prize-pool').textContent = T.prize_pool ? `$${num(T.prize_pool)}` : '$0';
+  document.getElementById('rebuy-info').textContent = T.rebuy_info || '';
+
+  // Avg chips
+  const avgEl = document.getElementById('avg-chips');
+  if (T.starting_chips && T.players_remaining) {
+    const totalChips = T.total_players * T.starting_chips;
+    avgEl.textContent = num(Math.floor(totalChips / T.players_remaining));
+  } else {
+    avgEl.textContent = '-';
+  }
+
+  // Status badge
+  const badge = document.getElementById('status-badge');
+  const sm = { idle:'等待開始',running:'進行中',paused:'暫停中',break:'休息中',finished:'已結束' };
+  const sc = { idle:'s-idle',running:'s-running',paused:'s-paused',break:'s-break',finished:'s-finished' };
+  badge.textContent = sm[T.status] || '-';
+  badge.className = `status-badge ${sc[T.status] || 's-idle'}`;
+
+  const cl = curLevel();
+  const nl = nextLevel();
+
+  if (cl) {
+    if (cl.is_break) {
+      document.getElementById('level-label').textContent = '☕ 休息時間';
+      document.getElementById('sb').textContent = '-';
+      document.getElementById('bb').textContent = '-';
+      document.getElementById('ante').textContent = '-';
+    } else {
+      document.getElementById('level-label').textContent = `LEVEL ${cl.level_number || T.current_level}`;
+      document.getElementById('sb').textContent = num(cl.small_blind);
+      document.getElementById('bb').textContent = num(cl.big_blind);
+      document.getElementById('ante').textContent = num(cl.ante);
+    }
+    if (nl) {
+      document.getElementById('next-preview').textContent = nl.is_break
+        ? '下一個：☕ 休息'
+        : `下一級：SB ${num(nl.small_blind)} / BB ${num(nl.big_blind)}${nl.ante ? ` / Ante ${num(nl.ante)}` : ''}`;
+    } else {
+      document.getElementById('next-preview').textContent = '最後一級';
+    }
+  }
+  tick();
+}
+
+function tick() {
+  if (!T) return;
+  const rem = remainingSecs();
+  const timerEl = document.getElementById('timer');
+  timerEl.textContent = fmt(rem);
+  timerEl.className = 'timer' + (rem <= 30 ? ' danger' : rem <= 60 ? ' warning' : '');
+
+  // Clock
+  const now = new Date();
+  document.getElementById('current-time').textContent =
+    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // Elapsed
+  document.getElementById('elapsed-time').textContent = fmtH(elapsedTotalSecs());
+
+  // Next break
+  const nb = nextBreakSecs();
+  document.getElementById('next-break').textContent = nb !== null ? fmtH(nb) : '--';
+}
+
+// ── Init ─────────────────────────────────────────────
+load();
+subscribe();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
