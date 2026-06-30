@@ -236,8 +236,10 @@ body::after{
   <div class="col-side">
     <div class="plaque">
       <div class="plaque-label">剩餘人數</div>
-      <div class="plaque-value" id="players-rem">-</div>
-      <div class="plaque-sub" id="total-players"></div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;white-space:nowrap">
+        <span class="plaque-value" id="players-rem">-</span>
+        <span class="plaque-sub" id="total-players" style="margin-top:0"></span>
+      </div>
     </div>
     <div class="plaque">
       <div class="plaque-label">平均籌碼</div>
