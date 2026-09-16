@@ -211,14 +211,6 @@ body::after{
       <div class="plaque-label">現在時間</div>
       <div class="plaque-value" id="current-time">--:--</div>
     </div>
-    <div class="plaque">
-      <div class="plaque-label">已進行</div>
-      <div class="plaque-value" id="elapsed-time">00:00:00</div>
-    </div>
-    <div class="plaque">
-      <div class="plaque-label">下次休息</div>
-      <div class="plaque-value" id="next-break">--</div>
-    </div>
   </div>
 
   <!-- Center -->
@@ -244,6 +236,7 @@ body::after{
     <div class="plaque">
       <div class="plaque-label">平均籌碼</div>
       <div class="plaque-value" id="avg-chips">-</div>
+      <div class="plaque-sub" id="avg-bb"></div>
     </div>
     <div class="plaque">
       <div class="plaque-label">獎池</div>
@@ -308,36 +301,9 @@ function remainingSecs() {
   return curLevel().duration_minutes * 60;
 }
 
-function elapsedTotalSecs() {
-  if (!T) return 0;
-  let done = 0;
-  for (const l of BL) {
-    if (l.level_order < T.current_level) done += l.duration_minutes * 60;
-  }
-  const cl = curLevel();
-  if (!cl) return done;
-  const levelTotal = cl.duration_minutes * 60;
-  if (T.status === 'running' || T.status === 'break') {
-    const cur = (Date.now() - new Date(T.level_start_at).getTime()) / 1000;
-    return done + Math.min(cur, levelTotal);
-  }
-  if (T.status === 'paused') return done + levelTotal - (T.pause_remaining_secs || 0);
-  return done;
-}
 
-function nextBreakSecs() {
-  const nb = BL.find(l => l.level_order > T.current_level && l.is_break);
-  if (!nb) return null;
-  let secs = remainingSecs();
-  for (const l of BL) {
-    if (l.level_order > T.current_level && l.level_order < nb.level_order)
-      secs += l.duration_minutes * 60;
-  }
-  return secs;
-}
 
 function fmt(s)    { s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}` }
-function fmtH(s)   { s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
 function num(n)    { return (n||0).toLocaleString() }
 function numK(n) {
   n = n || 0;
@@ -360,12 +326,19 @@ function render() {
   document.getElementById('prize-pool').textContent = `$${num(netPrize)}`;
   document.getElementById('rebuy-info').textContent = T.rebuy_info || '';
 
-  // Avg chips
+  // Avg chips（並換算成目前級別的 BB 數）
   const avgEl = document.getElementById('avg-chips');
+  const bbEl  = document.getElementById('avg-bb');
+  const curL  = curLevel();
   if (T.total_buy_ins && T.starting_chips && T.players_remaining) {
-    avgEl.textContent = num(Math.floor(T.total_buy_ins * T.starting_chips / T.players_remaining));
+    const avg = Math.floor(T.total_buy_ins * T.starting_chips / T.players_remaining);
+    avgEl.textContent = num(avg);
+    bbEl.textContent = (curL && !curL.is_break && curL.big_blind > 0)
+      ? `≈ ${Math.floor(avg / curL.big_blind)} BB`
+      : '';
   } else {
     avgEl.textContent = '-';
+    bbEl.textContent = '';
   }
 
   // Status badge
@@ -412,13 +385,6 @@ function tick() {
   const now = new Date();
   document.getElementById('current-time').textContent =
     `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-  // Elapsed
-  document.getElementById('elapsed-time').textContent = fmtH(elapsedTotalSecs());
-
-  // Next break
-  const nb = nextBreakSecs();
-  document.getElementById('next-break').textContent = nb !== null ? fmtH(nb) : '--';
 }
 
 // ── Wake Lock（防止螢幕自動關閉）────────────────────
