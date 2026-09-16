@@ -152,6 +152,16 @@ body::after{
 .timer.danger{color:var(--red);text-shadow:0 0 50px var(--red-glow), 0 0 100px rgba(212,40,63,.25);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
+/* 加時賽：炸彈圖示（呼吸）＋ 紅色光暈 */
+.bomb{display:none;width:min(40vh,52vw);height:min(40vh,52vw);animation:bombBreathe 2.2s ease-in-out infinite}
+.bomb svg{width:100%;height:100%;filter:drop-shadow(0 0 28px rgba(212,40,63,.55))}
+@keyframes bombBreathe{0%,100%{transform:scale(.94);opacity:.82}50%{transform:scale(1.06);opacity:1}}
+.stage.ot::before{background:radial-gradient(circle, var(--red-glow), transparent 68%)}
+.stage.ot .timer{display:none}
+.stage.ot .bomb{display:block}
+.bomb .spark{transform-origin:86px 19px;animation:spark .5s ease-in-out infinite alternate}
+@keyframes spark{from{transform:scale(.6);opacity:.6}to{transform:scale(1.25);opacity:1}}
+
 .status-badge{
   position:relative;
   font-size:clamp(11px,1.1vw,14px);font-weight:600;font-family:var(--mono);
@@ -220,8 +230,25 @@ body::after{
   <!-- Center -->
   <div class="col-center">
     <div class="ribbon" id="level-label">LEVEL 1</div>
-    <div class="stage">
+    <div class="stage" id="stage">
       <div class="timer" id="timer">--:--</div>
+      <div class="bomb" id="bomb" aria-label="加時賽進行中">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- 引信 -->
+          <path d="M60 30 Q72 12 85 19" stroke="#d4af37" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+          <!-- 火花 -->
+          <g class="spark">
+            <circle cx="86" cy="19" r="6" fill="#e3a23d"/>
+            <circle cx="86" cy="19" r="3" fill="#f3df9f"/>
+          </g>
+          <!-- 彈體 -->
+          <circle cx="44" cy="60" r="33" fill="#0a0e0a" stroke="#f4ecd8" stroke-width="4"/>
+          <!-- 高光 -->
+          <ellipse cx="33" cy="49" rx="8" ry="5" fill="rgba(244,236,216,.28)" transform="rotate(-30 33 49)"/>
+          <!-- 蓋子 -->
+          <rect x="52" y="24" width="15" height="11" rx="2.5" fill="#f4ecd8" transform="rotate(32 59 29)"/>
+        </svg>
+      </div>
     </div>
     <div class="status-badge s-idle" id="status-badge">等待開始</div>
     <div class="rebuy-info" id="rebuy-info"></div>
@@ -340,13 +367,33 @@ function render() {
 
   // Status badge
   const badge = document.getElementById('status-badge');
-  const sm = { idle:'等待開始',running:'進行中',paused:'暫停中',break:'休息中',finished:'已結束' };
-  const sc = { idle:'s-idle',running:'s-running',paused:'s-paused',break:'s-break',finished:'s-finished' };
+  const sm = { idle:'等待開始',running:'進行中',paused:'暫停中',break:'休息中',finished:'已結束',overtime:'加時賽進行中',overtime_done:'加時賽結束' };
+  const sc = { idle:'s-idle',running:'s-running',paused:'s-paused',break:'s-break',finished:'s-finished',overtime:'s-paused',overtime_done:'s-finished' };
   badge.textContent = sm[T.status] || '-';
   badge.className = `status-badge ${sc[T.status] || 's-idle'}`;
 
   const cl = curLevel();
   const nl = nextLevel();
+  const stage = document.getElementById('stage');
+  const isOT = T.status === 'overtime' || T.status === 'overtime_done';
+  stage.classList.toggle('ot', T.status === 'overtime');
+
+  if (isOT) {
+    // 加時賽：LEVEL 顯示加時賽、盲注列清空、隱藏下一級提示
+    document.getElementById('level-label').textContent = T.status === 'overtime' ? '加時賽' : '加時賽結束';
+    document.getElementById('sb').textContent = '-';
+    document.getElementById('bb').textContent = '-';
+    document.getElementById('ante').textContent = '-';
+    document.getElementById('next-preview').textContent = '';
+    bbEl.textContent = '';
+    if (T.status === 'overtime_done') {
+      const m = T.overtime_minutes || 0;
+      document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:00`;
+      document.getElementById('timer').className = 'timer';
+      document.getElementById('rebuy-info').textContent = `加時賽共 ${m} 分鐘 · 比賽結束`;
+    }
+    return;
+  }
 
   if (cl) {
     if (cl.is_break) {
@@ -372,7 +419,7 @@ function render() {
 }
 
 function tick() {
-  if (!T) return;
+  if (!T || T.status === 'overtime' || T.status === 'overtime_done') return;
   const rem = remainingSecs();
   const timerEl = document.getElementById('timer');
   timerEl.textContent = fmt(rem);
