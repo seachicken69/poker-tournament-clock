@@ -379,13 +379,13 @@ function render() {
   stage.classList.toggle('ot', T.status === 'overtime');
 
   if (isOT) {
-    // 加時賽：LEVEL 顯示加時賽、盲注列清空、隱藏下一級提示
+    // 加時賽：LEVEL 顯示加時賽、保留當下盲注級別、隱藏下一級提示
     document.getElementById('level-label').textContent = T.status === 'overtime' ? '加時賽' : '加時賽結束';
-    document.getElementById('sb').textContent = '-';
-    document.getElementById('bb').textContent = '-';
-    document.getElementById('ante').textContent = '-';
+    const blinds = (cl && !cl.is_break) ? cl : null;
+    document.getElementById('sb').textContent   = blinds ? numK(blinds.small_blind) : '-';
+    document.getElementById('bb').textContent   = blinds ? numK(blinds.big_blind)   : '-';
+    document.getElementById('ante').textContent = blinds ? numK(blinds.ante)        : '-';
     document.getElementById('next-preview').textContent = '';
-    bbEl.textContent = '';
     if (T.status === 'overtime_done') {
       const m = T.overtime_minutes || 0;
       document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:00`;
