@@ -208,8 +208,12 @@ body::after{
   <!-- Left -->
   <div class="col-side">
     <div class="plaque">
-      <div class="plaque-label">現在時間</div>
-      <div class="plaque-value" id="current-time">--:--</div>
+      <div class="plaque-label">剩餘人數</div>
+      <div class="plaque-value" id="players-rem">-</div>
+    </div>
+    <div class="plaque">
+      <div class="plaque-label">總買入</div>
+      <div class="plaque-value" id="total-buyins">-</div>
     </div>
   </div>
 
@@ -226,13 +230,6 @@ body::after{
 
   <!-- Right -->
   <div class="col-side">
-    <div class="plaque">
-      <div class="plaque-label">剩餘人數</div>
-      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;white-space:nowrap">
-        <span class="plaque-value" id="players-rem">-</span>
-        <span class="plaque-sub" id="total-players" style="margin-top:0"></span>
-      </div>
-    </div>
     <div class="plaque">
       <div class="plaque-label">平均籌碼</div>
       <div class="plaque-value" id="avg-chips">-</div>
@@ -318,8 +315,8 @@ function numK(n) {
 function render() {
   if (!T) return;
   document.getElementById('t-name').textContent = T.name;
-  document.getElementById('players-rem').textContent = T.players_remaining || '-';
-  document.getElementById('total-players').textContent = T.total_buy_ins ? `/ ${T.total_buy_ins}` : '';
+  document.getElementById('players-rem').textContent   = T.players_remaining || '-';
+  document.getElementById('total-buyins').textContent  = T.total_buy_ins ? num(T.total_buy_ins) : '-';
   const gross    = (T.total_buy_ins || 0) * (T.buy_in_amount || 0);
   const rate     = (T.reserve_rate  || 0) / 100;
   const netPrize = Math.floor(gross * (1 - rate));
@@ -380,11 +377,6 @@ function tick() {
   const timerEl = document.getElementById('timer');
   timerEl.textContent = fmt(rem);
   timerEl.className = 'timer' + (rem <= 30 ? ' danger' : rem <= 60 ? ' warning' : '');
-
-  // Clock
-  const now = new Date();
-  document.getElementById('current-time').textContent =
-    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
 
 // ── Wake Lock（防止螢幕自動關閉）────────────────────
