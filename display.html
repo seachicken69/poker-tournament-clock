@@ -325,19 +325,44 @@ function subscribe() {
     .subscribe();
 }
 
-// ── Helpers ───────────────────────────────────────────
-function curLevel()  { return BL.find(l => l.level_order === T.current_level) }
-function nextLevel() { return BL.find(l => l.level_order === T.current_level + 1) }
+// ── 級別推算 ──────────────────────────────────────────
+// 儀錶板自行從 level_start_at 推算「現在應該在第幾級、剩幾秒」，
+// 不依賴控制台把 DB 的 current_level 推進。這樣控制台關閉、手機熄屏
+// 或斷線時，電視端仍會正常跑完整個賽程。
+// 回傳 { level, remain, over }：over=true 代表整個賽程已跑完。
+function progress() {
+  if (!T || !BL.length) return { level: null, remain: 0, over: false };
+  const base = BL.find(l => l.level_order === T.current_level);
 
-function remainingSecs() {
-  if (!T || !curLevel()) return 0;
-  if (T.status === 'paused') return T.pause_remaining_secs || 0;
-  if (T.status === 'running' || T.status === 'break') {
-    const elapsed = (Date.now() - new Date(T.level_start_at).getTime()) / 1000;
-    return Math.max(0, curLevel().duration_minutes * 60 - elapsed);
+  // 非進行中（idle / paused / finished / 加時賽）：直接用 DB 的級別
+  if (T.status !== 'running' && T.status !== 'break') {
+    const remain = T.status === 'paused'
+      ? (T.pause_remaining_secs || 0)
+      : (base ? base.duration_minutes * 60 : 0);
+    return { level: base, remain, over: false };
   }
-  return curLevel().duration_minutes * 60;
+
+  // 進行中：從 current_level 起算，逐級扣掉已過的時間
+  const st = T.level_start_at ? new Date(T.level_start_at).getTime() : NaN;
+  if (!base || isNaN(st)) return { level: base, remain: 0, over: false };
+  let elapsed = (Date.now() - st) / 1000;
+  let order = T.current_level;
+  while (true) {
+    const l = BL.find(x => x.level_order === order);
+    if (!l) return { level: null, remain: 0, over: true };   // 賽程跑完
+    const dur = l.duration_minutes * 60;
+    if (elapsed < dur) return { level: l, remain: dur - elapsed, over: false };
+    elapsed -= dur;
+    order++;
+  }
 }
+
+function curLevel()  { return progress().level }
+function nextLevel() {
+  const cur = progress().level;
+  return cur ? BL.find(l => l.level_order === cur.level_order + 1) : null;
+}
+function remainingSecs() { return Math.max(0, progress().remain) }
 
 function fmt(s)    { s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}` }
 function num(n)    { return (n||0).toLocaleString() }
@@ -388,11 +413,23 @@ function render() {
   badge.textContent = sm[T.status] || '-';
   badge.className = `status-badge ${sc[T.status] || 's-idle'}`;
 
-  const cl = curLevel();
-  const nl = nextLevel();
+  const prog = progress();
+  const cl = prog.level;
+  const nl = cl ? BL.find(l => l.level_order === cl.level_order + 1) : null;
   const stage = document.getElementById('stage');
   const isOT = T.status === 'overtime' || T.status === 'overtime_done';
   stage.classList.toggle('ot', T.status === 'overtime');
+
+  // 推算到賽程已結束（最後一級時間也跑完）
+  if (!isOT && prog.over) {
+    document.getElementById('level-label').textContent = '賽程結束';
+    document.getElementById('timer').textContent = '0:00';
+    document.getElementById('timer').className = 'timer';
+    document.getElementById('next-preview').textContent = '';
+    badge.textContent = '已結束';
+    badge.className = 'status-badge s-finished';
+    return;
+  }
 
   if (isOT) {
     document.getElementById('level-label').textContent = T.status === 'overtime' ? '加時賽' : '加時賽結束';
@@ -417,7 +454,7 @@ function render() {
       document.getElementById('bb').textContent = '-';
       document.getElementById('ante').textContent = '-';
     } else {
-      document.getElementById('level-label').textContent = `LEVEL ${cl.level_number || T.current_level}`;
+      document.getElementById('level-label').textContent = `LEVEL ${cl.level_number || cl.level_order}`;
       document.getElementById('sb').textContent = numK(cl.small_blind);
       document.getElementById('bb').textContent = numK(cl.big_blind);
       document.getElementById('ante').textContent = numK(cl.ante);
@@ -433,17 +470,28 @@ function render() {
   tick();
 }
 
+let _tickLevel = null;
 function tick() {
   if (!T || T.status === 'overtime' || T.status === 'overtime_done') return;
-  const rem = remainingSecs();
+  const prog = progress();
+
+  // 跨級了就整頁重畫（盲注、下一級、音效一起更新）
+  const lv = prog.over ? 'over' : (prog.level?.level_order ?? null);
+  if (_tickLevel !== null && _tickLevel !== lv) { _tickLevel = lv; render(); return; }
+  _tickLevel = lv;
+  if (prog.over) return;
+
+  // 倒數 1 分鐘提示（每級一次）
+  const s = Math.floor(prog.remain);
+  if ((T.status === 'running' || T.status === 'break') && s >= 55 && s <= 60 && _warnKey !== lv) {
+    _warnKey = lv;
+    muyu(1);
+  }
+
+  const rem = prog.remain;
   const timerEl = document.getElementById('timer');
   timerEl.textContent = fmt(rem);
   timerEl.className = 'timer' + (rem <= 30 ? ' danger' : rem <= 60 ? ' warning' : '');
-  const s = Math.floor(rem);
-  if ((T.status === 'running' || T.status === 'break') && s >= 55 && s <= 60 && _warnKey !== T.level_start_at) {
-    _warnKey = T.level_start_at;
-    muyu(1);
-  }
 }
 
 // ── 音效：木魚（真實錄音，base64 內嵌 6.6KB）────────
@@ -482,14 +530,15 @@ let _sndLevel;   // undefined = 尚未初始化
 function checkLevelSound() {
   if (!T) return;
   const active = T.status === 'running' || T.status === 'break';
-  if (_sndLevel === undefined) { _sndLevel = active ? T.current_level : null; return; }
+  const lv = active ? progress().level?.level_order ?? null : null;
+  if (_sndLevel === undefined) { _sndLevel = lv; return; }
   if (!active) {
     if (T.status === 'idle' || T.status === 'finished') _sndLevel = null;
     return;
   }
-  if (_sndLevel !== T.current_level) { muyu(3); _sndLevel = T.current_level; }
+  if (lv !== null && _sndLevel !== lv) { muyu(3); _sndLevel = lv; }
 }
-let _warnKey = null;   // 倒數 1 分鐘：每級一次，以 level_start_at 為 key
+let _warnKey = null;   // 倒數 1 分鐘：每級一次，key = 級別
 
 // 加時賽結束：狀態轉為 overtime_done 時敲 3 下；首次載入若已是結束狀態不響
 let _otDoneSeen;   // undefined = 尚未初始化
