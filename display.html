@@ -435,7 +435,7 @@ function render() {
   }
 
   if (isOT) {
-    document.getElementById('level-label').textContent = T.status === 'overtime' ? '加時賽' : '加時賽結束';
+    document.getElementById('level-label').textContent = T.status === 'overtime' ? '加時賽進行中' : '加時賽結束';
     const blinds = (cl && !cl.is_break) ? cl : null;
     document.getElementById('sb').textContent   = blinds ? numK(blinds.small_blind) : '-';
     document.getElementById('bb').textContent   = blinds ? numK(blinds.big_blind)   : '-';
