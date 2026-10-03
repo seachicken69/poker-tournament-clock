@@ -173,8 +173,8 @@ body::after{
   background:rgba(0,0,0,.22);color:var(--fg);
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);
 }
-.s-running {box-shadow:inset 0 0 0 2px #fff, 0 0 16px rgba(255,255,255,.25)}
-.s-paused  {background:#fff;color:var(--bg)}                 /* 反白：暫停要一眼看到 */
+.s-running {background:#17A34A;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}  /* 進行中：綠底 */
+.s-paused  {background:#DC2626;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}  /* 暫停：紅底，一眼看到 */
 .s-break   {box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);border:2px dashed rgba(255,255,255,.7)}
 .s-idle, .s-finished {color:var(--fg-dim);box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
 
