@@ -132,7 +132,7 @@ body::after{
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 
 /* 加時賽：木魚敲擊動畫（功德 +1，參考經典梗圖） */
-.muyu{display:none;width:min(46vh,60vw);height:min(46vh,60vw);position:relative}
+.muyu{display:none;width:min(34vh,46vw);height:min(34vh,46vw);position:relative}
 .muyu svg{width:100%;height:100%;overflow:visible}
 .stage.ot .timer{display:none}
 .stage.ot .muyu{display:block}
@@ -410,6 +410,9 @@ function render() {
   const badge = document.getElementById('status-badge');
   const sm = { idle:'等待開始',running:'進行中',paused:'暫停中',break:'休息中',finished:'已結束',overtime:'加時賽進行中',overtime_done:'加時賽結束' };
   const sc = { idle:'s-idle',running:'s-running',paused:'s-paused',break:'s-break',finished:'s-finished',overtime:'s-paused',overtime_done:'s-finished' };
+  // 休息中、加時賽：上方 LEVEL 標題已經說明狀態，不重複顯示標籤
+  const hideBadge = ['break','overtime','overtime_done'].includes(T.status);
+  badge.style.display = hideBadge ? 'none' : '';
   badge.textContent = sm[T.status] || '-';
   badge.className = `status-badge ${sc[T.status] || 's-idle'}`;
 
