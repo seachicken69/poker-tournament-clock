@@ -55,7 +55,7 @@ body::after{
 
 /* ── Marquee header ── */
 .header{
-  position:relative;z-index:1;padding:16px 28px 14px;text-align:center;
+  position:relative;z-index:1;padding:12px 28px 10px;text-align:center;
   border-bottom:2px solid var(--panel-line);
   background:linear-gradient(180deg, rgba(0,0,0,.18), transparent);
 }
@@ -70,7 +70,6 @@ body::after{
   font-size:clamp(20px,2.6vw,34px);
   letter-spacing:.18em;text-transform:uppercase;color:var(--fg);
 }
-.subtitle{margin-top:5px;font-size:clamp(9px,.8vw,11px);letter-spacing:.4em;color:var(--fg-dim);text-transform:uppercase;font-weight:700}
 
 /* ── Main 3-column grid ── */
 .main{
@@ -103,9 +102,8 @@ body::after{
   color:var(--fg);letter-spacing:.02em;white-space:nowrap;
   line-height:1.15;
 }
-/* 平均籌碼的 BB 行：與碼量同字級 */
-.plaque-value.bb{margin-top:2px}
-.plaque-value.bb .unit{font-size:.62em;margin-left:.18em;letter-spacing:.06em;vertical-align:baseline}
+/* 平均 BB 數的單位字樣略縮 */
+.plaque-value .unit{font-size:.62em;margin-left:.18em;letter-spacing:.06em;vertical-align:baseline}
 
 /* ── Center stage ── */
 .col-center{
@@ -188,21 +186,21 @@ body::after{
   background:var(--bg-deep);
   border-top:2px solid var(--panel-line);
   display:grid;grid-template-columns:1fr 1fr 1fr;
-  padding:4px 0 2px;
+  padding:0;
 }
-.blind-cell{position:relative;padding:14px 10px 16px;text-align:center}
+.blind-cell{position:relative;padding:6px 10px 8px;text-align:center}
 .blind-cell + .blind-cell::before{
   content:'♦';position:absolute;left:0;top:50%;transform:translate(-50%,-50%);
   color:var(--fg);font-size:26px;opacity:.7;
 }
 .blind-label{
   font-size:clamp(20px,1.7vw,24px);color:var(--fg-dim);text-transform:uppercase;
-  letter-spacing:.3em;margin-bottom:7px;font-weight:700;
+  letter-spacing:.3em;margin-bottom:2px;font-weight:700;line-height:1.2;
 }
 .blind-value{
   font-family:var(--mono);font-weight:700;
   font-size:clamp(46px,7.2vw,91px);
-  color:var(--fg);
+  color:var(--fg);line-height:1.05;
 }
 </style>
 </head>
@@ -217,7 +215,6 @@ body::after{
     <div class="t-name" id="t-name">AK 錦標賽</div>
     <span class="diamond">◆</span>
   </div>
-  <div class="subtitle">Tournament Clock</div>
 </div>
 
 <div class="main">
@@ -273,11 +270,10 @@ body::after{
     <div class="plaque">
       <div class="plaque-label">平均籌碼</div>
       <div class="plaque-value" id="avg-chips">-</div>
-      <div class="plaque-value bb" id="avg-bb"></div>
     </div>
     <div class="plaque">
-      <div class="plaque-label">獎池</div>
-      <div class="plaque-value" id="prize-pool">$0</div>
+      <div class="plaque-label">平均 BB 數</div>
+      <div class="plaque-value" id="avg-bb">-</div>
     </div>
   </div>
 </div>
@@ -383,27 +379,21 @@ function render() {
   document.getElementById('t-name').textContent = T.name;
   document.getElementById('players-rem').textContent   = T.players_remaining || '-';
   document.getElementById('total-buyins').textContent  = T.total_buy_ins ? num(T.total_buy_ins) : '-';
-  const gross    = (T.total_buy_ins || 0) * (T.buy_in_amount || 0);
-  const rate     = (T.reserve_rate  || 0) / 100;
-  const netPrize = Math.floor(gross * (1 - rate));
-  document.getElementById('prize-pool').textContent = `$${num(netPrize)}`;
   document.getElementById('rebuy-info').textContent = '';
 
-  // Avg chips（並換算成目前級別的 BB 數，與碼量同字級）
+  // 平均籌碼 與 平均 BB 數（各自一個欄位，不換行）
   const avgEl = document.getElementById('avg-chips');
   const bbEl  = document.getElementById('avg-bb');
   const curL  = curLevel();
   if (T.total_buy_ins && T.starting_chips && T.players_remaining) {
     const avg = Math.floor(T.total_buy_ins * T.starting_chips / T.players_remaining);
     avgEl.textContent = num(avg);
-    if (curL && !curL.is_break && curL.big_blind > 0) {
-      bbEl.innerHTML = `${Math.floor(avg / curL.big_blind)}<span class="unit">BB</span>`;
-    } else {
-      bbEl.textContent = '';
-    }
+    bbEl.innerHTML = (curL && !curL.is_break && curL.big_blind > 0)
+      ? `${Math.floor(avg / curL.big_blind)}<span class="unit">BB</span>`
+      : '-';
   } else {
     avgEl.textContent = '-';
-    bbEl.textContent = '';
+    bbEl.textContent = '-';
   }
 
   // Status badge
